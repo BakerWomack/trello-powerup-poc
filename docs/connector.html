@@ -80,8 +80,6 @@
                     },
                     text: 'Membership Audit',
                     callback: function(t) {
-                        console.log('🔵 Board button clicked! Starting vulnerability test...');
-                        
                         // Test directly in callback (board context available here)
                         // This demonstrates the vulnerability - sensitive fields are exposed!
                         t.board('id', 'name', 'memberships')
@@ -116,21 +114,11 @@
                                         console.log('');
                                         console.log('⚠️  VULNERABILITY: Sensitive fields (deactivated, unconfirmed) are exposed!');
                                         console.log('⚠️  These fields should NOT be accessible to Power-Ups!');
-                                        
-                                        // Show alert for visible feedback
-                                        alert('✅ Vulnerability confirmed! Check console (F12) for details. Sensitive fields (deactivated, unconfirmed) are exposed.');
-                                    } else {
-                                        console.warn('⚠️  No memberships found in board data');
-                                        alert('⚠️  No memberships found in board data');
                                     }
-                                } else {
-                                    console.warn('⚠️  Board data or memberships not found');
-                                    alert('⚠️  Board data or memberships not found');
                                 }
                             })
                             .catch(function(error) {
                                 console.error('❌ Error fetching board:', error);
-                                alert('❌ Error: ' + (error.message || error));
                             });
                         
                         // Don't open popup - just test in callback
