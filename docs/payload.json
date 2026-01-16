@@ -1,0 +1,37 @@
+{
+    "__typename": "Board",
+    "id": "69583c19f7b72cc979d35492",
+    "closed": false,
+    "memberships": [
+      {
+        "__typename": "Membership",
+        "id": "69583c19f7b72cc979d354ad",
+        "idMember": "69583bd8c414426ee25c9af0",
+        "memberType": "admin",
+        "deactivated": false,
+        "unconfirmed": false
+      }
+    ],
+    "organization": {
+      "__typename": "Organization",
+      "id": "69583c19f7b72cc979d35435",
+      "displayName": "Poisoned Workspace (Admin Access)",
+      "offering": "trello.personal_premium",
+      "memberships": [
+        {
+          "__typename": "Membership",
+          "id": "69583c19f7b72cc979d3543f",
+          "idMember": "69583bd8c414426ee25c9af0",
+          "memberType": "admin"
+        }
+      ],
+      "premiumFeatures": [
+        "admin",
+        "billing",
+        "security",
+        "superAdmins",
+        "export",
+        "atlassianIntelligence"
+      ]
+    }
+  }

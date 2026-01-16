@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #f4f5f7;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #172b4d;
+            margin-top: 0;
+        }
+        .controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f4f5f7;
+            border-radius: 4px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #dfe1e6;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        button {
+            background: #0052cc;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0065ff;
+        }
+        button.secondary {
+            background: #6b778c;
+        }
+        button.secondary:hover {
+            background: #5e6c84;
+        }
+        .payload-display {
+            margin-top: 20px;
+        }
+        pre {
+            background: #f4f5f7;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid #dfe1e6;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .error {
+            color: #de350b;
+            background: #ffebe6;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .success {
+            color: #00875a;
+            background: #e3fcef;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .info {
+            color: #0052cc;
+            background: #e3fcef;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 13px;
+        }
+        .attachment-list {
+            margin-top: 15px;
+        }
+        .attachment-item {
+            padding: 10px;
+            background: white;
+            border: 1px solid #dfe1e6;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+        .attachment-item:hover {
+            background: #f4f5f7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>State Poisoning Payload Viewer</h1>
+        
+        <div class="info">
+            <strong>Instructions:</strong> Upload payload.json as an attachment to a Trello card, then either:
+            <ul style="margin: 5px 0; padding-left: 20px;">
+                <li>Enter the card ID below and click "Load from Card"</li>
+                <li>Or enter the direct attachment URL and click "Load from URL"</li>
+            </ul>
+        </div>
+
+        <div class="controls">
+            <label><strong>Card ID:</strong></label>
+            <input type="text" id="cardId" placeholder="Enter Trello card ID (e.g., 69583c19f7b72cc979d35492)">
+            <button onclick="loadFromCard()">Load from Card</button>
+            <button class="secondary" onclick="loadFromCurrentCard()">Load from Current Card</button>
+            
+            <label style="display: block; margin-top: 15px;"><strong>Or Direct Attachment URL:</strong></label>
+            <input type="text" id="attachmentUrl" placeholder="https://trello.com/1/cards/{cardId}/attachments/{attachmentId}/download/payload.json">
+            <button onclick="loadFromUrl()">Load from URL</button>
+        </div>
+
+        <div id="status"></div>
+        <div id="attachmentList" class="attachment-list"></div>
+        <div class="payload-display">
+            <h2>Payload Data:</h2>
+            <pre id="payloadDisplay">No payload loaded. Use the controls above to load payload.json from a Trello card.</pre>
+        </div>
+    </div>
+
+    <script src="https://p.trellocdn.com/power-up.min.js"></script>
+    <script>
+        let t;
+
+        // Initialize Trello Power-Up
+        t = window.TrelloPowerUp.initialize({
+            'board-buttons': function(t, opts) {
+                return [{
+                    icon: {
+                        dark: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIgMkwxMy4wOSA4LjI2TDIwIDlMMTMuMDkgMTUuNzRMMTIgMjJMMTAuOTEgMTUuNzRMNCBMMTAuOTEgOC4yNkwxMiAyWiIgZmlsbD0iI2ZmYWExMCIvPjwvc3ZnPg==',
+                        light: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIgMkwxMy4wOSA4LjI2TDIwIDlMMTMuMDkgMTUuNzRMMTIgMjJMMTAuOTEgMTUuNzRMNCBMMTAuOTEgOC4yNkwxMiAyWiIgZmlsbD0iI2ZmYWExMCIvPjwvc3ZnPg=='
+                    },
+                    text: 'View Payload',
+                    callback: function(t) {
+                        return t.popup({
+                            title: 'State Poisoning Payload Viewer',
+                            url: './connectorjson.html',
+                            height: 600
+                        });
+                    }
+                }];
+            },
+            'card-buttons': function(t, opts) {
+                return [{
+                    icon: 'https://cdn.glitch.com/1b42b7a4-170b-4e02-b05a-3bcf0c2ef6f4%2Frocket-ship.png?1494946700421',
+                    text: 'View Payload',
+                    callback: function(t) {
+                        return t.popup({
+                            title: 'State Poisoning Payload Viewer',
+                            url: './connectorjson.html',
+                            height: 600
+                        });
+                    }
+                }];
+            },
+            'card-badges': function(t, opts) {
+                return [];
+            },
+            'authorization-status': function(t, opts) {
+                return { authorized: false };
+            }
+        });
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = type;
+            statusDiv.textContent = message;
+            setTimeout(() => {
+                statusDiv.textContent = '';
+                statusDiv.className = '';
+            }, 5000);
+        }
+
+        function displayPayload(data) {
+            const display = document.getElementById('payloadDisplay');
+            display.textContent = JSON.stringify(data, null, 2);
+            showStatus('Payload loaded successfully!', 'success');
+        }
+
+        function loadFromUrl() {
+            const url = document.getElementById('attachmentUrl').value.trim();
+            if (!url) {
+                showStatus('Please enter an attachment URL', 'error');
+                return;
+            }
+
+            showStatus('Loading payload from URL...', 'info');
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    displayPayload(data);
+                })
+                .catch(error => {
+                    showStatus('Error loading payload: ' + error.message, 'error');
+                    console.error('Error:', error);
+                });
+        }
+
+        function loadFromCard() {
+            const cardId = document.getElementById('cardId').value.trim();
+            if (!cardId) {
+                showStatus('Please enter a card ID', 'error');
+                return;
+            }
+
+            if (!t) {
+                showStatus('Trello Power-Up not initialized. Use direct URL method instead.', 'error');
+                return;
+            }
+
+            showStatus('Loading attachments from card...', 'info');
+            t.get('card', cardId, 'attachments')
+                .then(attachments => {
+                    const jsonAttachments = attachments.filter(att => 
+                        att.name === 'payload.json' || att.name.endsWith('.json')
+                    );
+
+                    if (jsonAttachments.length === 0) {
+                        showStatus('No JSON attachments found on this card', 'error');
+                        return;
+                    }
+
+                    // Display attachment list
+                    const listDiv = document.getElementById('attachmentList');
+                    listDiv.innerHTML = '<h3>Found Attachments:</h3>';
+                    jsonAttachments.forEach(att => {
+                        const item = document.createElement('div');
+                        item.className = 'attachment-item';
+                        item.innerHTML = `<strong>${att.name}</strong> (${(att.bytes / 1024).toFixed(2)} KB)`;
+                        item.onclick = () => {
+                            fetch(att.url)
+                                .then(r => r.json())
+                                .then(data => displayPayload(data))
+                                .catch(err => showStatus('Error loading: ' + err.message, 'error'));
+                        };
+                        listDiv.appendChild(item);
+                    });
+
+                    // Auto-load first payload.json if found
+                    const payloadJson = jsonAttachments.find(att => att.name === 'payload.json');
+                    if (payloadJson) {
+                        fetch(payloadJson.url)
+                            .then(r => r.json())
+                            .then(data => displayPayload(data))
+                            .catch(err => showStatus('Error loading: ' + err.message, 'error'));
+                    }
+                })
+                .catch(error => {
+                    showStatus('Error loading card: ' + error.message, 'error');
+                    console.error('Error:', error);
+                });
+        }
+
+        function loadFromCurrentCard() {
+            if (!t) {
+                showStatus('Trello Power-Up not initialized', 'error');
+                return;
+            }
+
+            showStatus('Loading current card...', 'info');
+            t.card('id')
+                .then(cardId => {
+                    document.getElementById('cardId').value = cardId;
+                    loadFromCard();
+                })
+                .catch(error => {
+                    showStatus('Error getting current card: ' + error.message, 'error');
+                });
+        }
+
+        // Auto-load from current card if available
+        if (t) {
+            t.card('id')
+                .then(cardId => {
+                    if (cardId) {
+                        document.getElementById('cardId').value = cardId;
+                        loadFromCurrentCard();
+                    }
+                })
+                .catch(() => {
+                    // Not in card context, ignore
+                });
+        }
+
+        console.log('Power-Up initialized');
+    </script>
+</body>
+</html>
+
