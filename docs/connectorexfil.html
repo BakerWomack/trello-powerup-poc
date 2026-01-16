@@ -115,8 +115,8 @@
         </div>
 
         <div class="controls">
-            <button id="exfiltrateBtn" onclick="runExfiltration()">🚨 Exfiltrate PII Data</button>
-            <button id="clearBtn" class="secondary" onclick="clearResults()" style="background: #6b778c;">Clear Results</button>
+            <button id="exfiltrateBtn" onclick="runExfiltration()" style="display: inline-block; min-width: 200px; background: #0052cc; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: 600; margin-right: 10px;">🚨 Exfiltrate PII Data</button>
+            <button id="clearBtn" onclick="clearResults()" style="display: inline-block; min-width: 150px; background: #6b778c; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 14px; margin-right: 10px;">Clear Results</button>
         </div>
 
         <div id="status"></div>
@@ -168,13 +168,14 @@
             display.textContent = JSON.stringify(data, null, 2);
         }
 
-        function clearResults() {
+        // Define functions first
+        window.clearResults = function() {
             document.getElementById('payloadDisplay').textContent = 'Click the button above to trigger exfiltration. Results will appear here.';
             document.getElementById('status').textContent = '';
             document.getElementById('status').className = '';
-        }
+        };
 
-        function runExfiltration() {
+        window.runExfiltration = function() {
             const btn = document.getElementById('exfiltrateBtn');
             btn.disabled = true;
             btn.textContent = '⏳ Running...';
@@ -267,9 +268,21 @@
                 btn.disabled = false;
                 btn.textContent = '🚨 Exfiltrate PII Data';
             }
-        }
+        }; // End of runExfiltration function
 
+        // Verify page loaded and button exists
+        window.addEventListener('DOMContentLoaded', function() {
+            const btn = document.getElementById('exfiltrateBtn');
+            if (btn) {
+                console.log('✅ Button found and ready:', btn);
+            } else {
+                console.error('❌ Button not found!');
+            }
+        });
+
+        // Also check immediately
         console.log('PII Exfiltration Power-Up loaded');
+        console.log('Button element:', document.getElementById('exfiltrateBtn'));
     </script>
 </body>
 </html>
