@@ -130,3 +130,4 @@ curl https://your-payload-url.com/payload.json | jq .
 
 This ensures maximum compatibility and no CSP issues.
 
+
